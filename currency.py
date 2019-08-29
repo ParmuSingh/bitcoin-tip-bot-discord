@@ -8,41 +8,24 @@ import pickle
 #####################
 class Currency:
 	def __init__(self):
-		# self.server = server
-		# self.balances_file = open(f"./balances.json", "r+")
-		# self.balances_file = open(f"./balances.json", "r+")
 		self.balances = {}
-
-		# self.members = {}
 		self.members_list = []
 		self.sat_reserve = 100
 
-		# for member in server.members:
-		#   if not member.bot:
-		#       self.member_list.append(member.split('#')[1])
-		# with open("./balances.json", "r+") as balances_file:
-		# 	self.balances = json.load(balances_file)
 		try:
 			with open("./balances.json", "r+") as balances_file:
 				self.balances = json.load(balances_file)
-		# 	# self.balances = json.load(self.balances_file)
-		# 	print(self.balances)
-		# 	# self.member_list = [member.split("#")[1] for member in server.members]
 		except:
 			print("balance file is empty..")
 			self.update_balance_file()
 
-		# self.balances = json.load(self.balances_file)
 		self.members_list = list(self.balances.keys())
 		print(f"members = {self.members_list}")
-		# self.members = json.load()
-		# print(self.member_list) # includes bots
+
 	def show_balance(self, id):
 		return self.balances[id]
 
 	def do_transaction(self, sender_name, sender_id, reciever_name, reciever_id, amount):
-		print("test")
-		print(amount)
 		amount = int(amount)
 		print(f"initiating tx: {sender_name} -> {reciever_name} | amount = {amount}")
 		
@@ -75,9 +58,5 @@ class Currency:
 	def update_balance_file(self):
 		with open("./balances.json", "w") as balances_file:
 			json.dump(self.balances, balances_file)
-		# self.balances_file.seek(0)
-		# json.dump(self.balances, self.balances_file)
-		# self.balances_file.truncate()
 	def close_file(self):
-		# self.balances_file.close()
 		pass
