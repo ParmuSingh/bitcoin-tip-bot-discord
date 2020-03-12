@@ -31,14 +31,10 @@ class Currency:
 		
 		if sender_id not in self.members_list:
 			print('sender not in members_list')
-			self.balances[sender_id] = 0
-			self.members_list.append(sender_id)
-			self.update_balance_file()
+			add_user_to_json(sender_id)
 		if reciever_id not in self.members_list:
 			print('recv not in members_list')
-			self.balances[reciever_id] = 0
-			self.members_list.append(reciever_id)
-			self.update_balance_file()
+			add_user_to_json(reciever_id)
 
 
 		valid, err = self.is_tx_valid(sender_id, reciever_id, amount)
@@ -58,5 +54,11 @@ class Currency:
 	def update_balance_file(self):
 		with open("./balances.json", "w") as balances_file:
 			json.dump(self.balances, balances_file)
+	def add_user_to_json(self, userid):
+		if userid not in self.members_list:
+			print(f'{userid} not in member_list')
+			self.balances[userid] = 0
+			self.members_list.append(userid)
+			self.update_balance_file()
 	def close_file(self):
 		pass
