@@ -1,79 +1,105 @@
 #discord.__version__ = 1.0.0a
 client_id_file 		= open("./private_data/client_id.txt", "r")
-token_file 		= open("./private_data/token.txt", "r")
+token_file 			= open("./private_data/token.txt", "r")
 server_id_file 		= open("./private_data/my_server_id.txt", "r")
-#LND_DIR_file		= open("./private_data/LND_DIR.txt", "r")
 
-# admin_secret_file	= open("./private_data/my_admin_secret.txt", "r")
 client_id 		= int(client_id_file.read())
 server_id 		= int(server_id_file.read())
-# admin_secret 		= admin_secret_file.read()
+
 token 			= token_file.read()
-permissions 		= 68608
-#LND_DIR 		= LND_DIR_file.read()
+permissions 	= 68608
 
 # https://discordapp.com/oauth2/authorize?client_id={CLIENT_ID}&scope=bot&permissions={PERMISSIONSINT}
 add_to_server_url = f"https://discordapp.com/oauth2/authorize?client_id={client_id}&scope=bot&permissions={permissions}"
-print(add_to_server_url)
 
 import discord
-import currency
-import lnd_node
-# from Crypto.Hash import SHA256
+import currency_mongo
+import helpers
+
+helpers.log(add_to_server_url)
 
 # initiates client
 client = discord.Client()
-currency_discord = None
+mongo_currency = currency_mongo.Currency()
 
 @client.event 	# decorator/wrapper
-async def on_ready(currency=currency):
+async def on_ready():
+	pass
+	#global mongo_currency
 
-	global currency_discord
-
-	currency_discord = currency.Currency()
-
+	#mongo_currency = currency.Currency()
 
 @client.event
 async def on_message(message):
-	print(f"#{message.channel} : {message.author} : {message.content}")
+	#print(f"{message} : #{message.channel} : {message.author} : {message.content}")
+	server_id = message.guild.id
+	server_name = message.guild.name
+	member_id = message.author.id
+	member_name = message.author.name
 
-	currency_discord.add_user_to_json(str(message.author.id))
+	if "!btctip" not in message.content:
+		return
+
+	helpers.log(f"\n-> message: {message.content} |||| server_id: {server_id} | server_name: {server_name} | member_id: {member_id} | member_name: {member_name}\n")
+
+	mongo_currency.check(server_id, server_name, member_id, member_name)
 
 	if "!btctip xxstop" in message.content.lower():
-		print("byeeee")
-		currency_discord.close_file()
+		helpers.log("byeeee", 'critical')
 		await client.close()
 		return
 	if "!btctip show my balance" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
-		bal = currency_discord.show_balance(str(message.author.id))
-		await message.channel.send(f"you have {bal}sats")
+		#member_id = message.author.id
+
+		bal = mongo_currency.get_balance(member_id)
+		await message.channel.send(f"you have {bal}sats")	
 		return
 	if "!btctip help" in message.content.lower() and message.author.name!="bitcoin-tip-bot" :
-		await message.channel.send("hey hey heyyyyy I'm a bitcoin bot you can use to tip people within this server with some bitcoin. My creator has envisoned me to work with bitcoin's lightning network so you can do microtransaction instantly.\n\nRight now you can only send bitcoin already in circulation but my creator will soon add the feature to withdraw (and deposit) your bitcoin which you can receive on any bitcoin wallet.\n\nTo send money:`!btctip <mention-username-of-receiver> <amt-in-satoshi>`\nExample: `!btctip @ParmuSingh#5099 50` This will send 50 satoshis from your wallet to ParmuSingh's wallet.\n\nTo see your balances:\n`!btctip show my balance`\n\n\nps: 1 satoshi is 0.00000001 bitcoin 		|		 I may not be online all the time.\n\nbeep beep boop boop - created by a smart ass.")
+		await message.channel.send("hey hey heyyyyy I'm a bitcoin bot you can use to tip people within this server with some bitcoin.\n\nTo send money:`!btctip <mention-username-of-receiver> <amt-in-satoshi>`\nExample: `!btctip @ParmuSingh#5099 50` This will send 50 satoshis from your wallet to ParmuSingh's wallet.\n\nTo see your balances:\n`!btctip show my balance`\n\n\nps: 1 satoshi is 0.00000001 bitcoin 		|		 I may not be online all the time.\n\nbeep beep boop boop - created by a smart ass.")
 		return
 
 	if "!btctip withdraw" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
+		#try:
+
+		withdrawer_id = member_id
+		withdrawer_name = member_name
+
+		words = message.content.lower().split(' ')
+		for i in range(len(words)):
+			if words[i] == "!btctip" and words[i+1] == "withdraw":
+				pay_req = words[i+2]
+				break
+				# not returning if invalid after invoke command cuz it raises exception and program goes on
+
+		#result = mongo_currency.get_amount_from_payreq(pay_req)
+		result = mongo_currency.withdraw_pay_invoice(server_id, server_name, withdrawer_id, withdrawer_name, pay_req)
+		await message.channel.send(result)
+
+		#except ValueError as e:
+		#	print(e)
+		#	await message.channel.send("ay check again")
+		#	return
+
+	if "!btctip deposit" in message.content.lower() and  message.author.name!="bitcoin-tip-bot":
 		try:
-			pay_req = ""
+
+			depositor_id = member_id
+			depositor_name = member_name
+
 			words = message.content.lower().split(' ')
 			for i in range(len(words)):
-				if words[i] == "!btctip":
-					pay_req = words[i+2]
+				if words[i] == "!btctip" and words[i+1] == "deposit":
+					amount = words[i+2]
 					break
-			user_id = str(message.author.id)
-			user_name = message.author.name
-			print(f"withdrawl request from {user_name} ({user_id}): {pay_req}")
+					# not returning if invalid after invoke command cuz it raises exception and program goes on
 
-			success, err = lnd_node.withdraw(pay_req)
+			invoice = mongo_currency.deposit_get_payreq(server_id, server_name, depositor_id, depositor_name, amount)
+			await message.channel.send(invoice)
 
-			if success:
-				await message.channel.send(f"yo withdrawl request initiated. You reach recieve it any minute.")
-			else:
-				await message.channel.send(f"problem: {err}")
 		except ValueError as e:
-			print(e)
+			helpers.log(e, 'error')
 			await message.channel.send("ay check again")
-
+			return
 
 	if "!btctip" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
 		try:
@@ -88,27 +114,32 @@ async def on_message(message):
 					break
 					# not returning if invalid after invoke command cuz it raises exception and program goes on
 
-			sender_id = str(message.author.id)
-			sender_name = message.author.name
-			recipient_id = str(recipient[2:len(recipient) - 1])
-			recipient_name = client.get_user(int(recipient_id)).name
-			# recipient_id = str(recipient_id)
+			sender_id = member_id
+			sender_name = member_name
+			recipient_id = int(recipient.split('!')[1][:len(recipient) - 1])
+			recipient_name = await client.fetch_user(recipient_id)
+			recipient_name = str(recipient_name).split('#')[0]
 
-			print(f"sender_name = {sender_name} | sender_id = {sender_id} | recipient_name = {recipient_name} | recipient_id = {recipient_id}")
+			mongo_currency.check(server_id, server_name, recipient_id, recipient_name)
+
+			helpers.log(f"sender_name = {sender_name} | sender_id = {sender_id} | recipient_name = {recipient_name} | recipient_id = {recipient_id}")
+
+			if int(amount) <= 0:
+				await message.channel.send("niiggaa... no.")
+				return
 
 			if sender_id == recipient_id:
 				await message.channel.send("why would you tip yourself...?")
 				return
 
-			success, err = currency_discord.do_transaction(sender_name, sender_id, recipient_name, recipient_id, amount)
-			if success:
-				await message.channel.send(f"hey heyy heyyy\n{amount} satoshis sent to {str(recipient_name).split('#')[0]} from {sender_name}\n\n1 satoshi = 0.00000001 bitcoin")
+			result = mongo_currency.send_money(sender_id, recipient_id, amount)
+			if result:
+				await message.channel.send(f"hey heyy heyyy\n{amount} satoshis sent to {recipient_name}")
 			else:
-				await message.channel.send(f"problem: {err}")
+				await message.channel.send(f"problem: {result}")
 
 		except ValueError as e:
-			print(e)
+			helpers.log(e)
 			await message.channel.send("ay check again")
 
 client.run(token)
-
