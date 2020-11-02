@@ -48,17 +48,17 @@ async def on_message(message):
 		helpers.log("byeeee", 'critical')
 		await client.close()
 		return
-	if "!btctip show my balance" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
+	elif "!btctip show my balance" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
 		#member_id = message.author.id
 
 		bal = mongo_currency.get_balance(member_id)
 		await message.channel.send(f"you have {bal}sats")	
 		return
-	if "!btctip help" in message.content.lower() and message.author.name!="bitcoin-tip-bot" :
+	elif "!btctip help" in message.content.lower() and message.author.name!="bitcoin-tip-bot" :
 		await message.channel.send("hey hey heyyyyy I'm a bitcoin bot you can use to tip people within this server with some bitcoin.\n\nTo send money:`!btctip <mention-username-of-receiver> <amt-in-satoshi>`\nExample: `!btctip @ParmuSingh#5099 50` This will send 50 satoshis from your wallet to ParmuSingh's wallet.\n\nTo see your balances:\n`!btctip show my balance`\n\n\nps: 1 satoshi is 0.00000001 bitcoin 		|		 I may not be online all the time.\n\nbeep beep boop boop - created by a smart ass.")
 		return
 
-	if "!btctip withdraw" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
+	elif "!btctip withdraw" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
 		#try:
 
 		withdrawer_id = member_id
@@ -73,6 +73,7 @@ async def on_message(message):
 
 		#result = mongo_currency.get_amount_from_payreq(pay_req)
 		result = mongo_currency.withdraw_pay_invoice(server_id, server_name, withdrawer_id, withdrawer_name, pay_req)
+
 		await message.channel.send(result)
 
 		#except ValueError as e:
@@ -80,7 +81,7 @@ async def on_message(message):
 		#	await message.channel.send("ay check again")
 		#	return
 
-	if "!btctip deposit" in message.content.lower() and  message.author.name!="bitcoin-tip-bot":
+	elif "!btctip deposit" in message.content.lower() and  message.author.name!="bitcoin-tip-bot":
 		try:
 
 			depositor_id = member_id
@@ -101,7 +102,7 @@ async def on_message(message):
 			await message.channel.send("ay check again")
 			return
 
-	if "!btctip" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
+	elif "!btctip" in message.content.lower() and message.author.name!="bitcoin-tip-bot":
 		try:
 			words = message.content.lower().split(' ')
 
@@ -116,7 +117,7 @@ async def on_message(message):
 
 			sender_id = member_id
 			sender_name = member_name
-			recipient_id = int(recipient.split('!')[1][:len(recipient) - 1])
+			recipient_id = int(recipient.split('!')[1][:len(recipient.split('!')[1]) - 1])
 			recipient_name = await client.fetch_user(recipient_id)
 			recipient_name = str(recipient_name).split('#')[0]
 
@@ -133,6 +134,11 @@ async def on_message(message):
 				return
 
 			result = mongo_currency.send_money(sender_id, recipient_id, amount)
+
+			if result == "not enough balance":
+				await message.channel.send(result)
+				return
+
 			if result:
 				await message.channel.send(f"hey heyy heyyy\n{amount} satoshis sent to {recipient_name}")
 			else:

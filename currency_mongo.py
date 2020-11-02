@@ -88,8 +88,8 @@ class Currency:
 		helpers.log(f"\ninitiating tx: {sender_id} -> {receiver_id} | amount = {amount}\n")
 
 		sender_balance = self.get_balance(sender_id)
-
-		if amount > sender_balance and sender_balance > 0:
+		print(f"sender_balance: {sender_balance}. is sender_balance > 0 : {sender_balance > 0}")
+		if amount > sender_balance and sender_balance <= 0:
 			helpers.log(f"not enough balance")
 			return "not enough balance"
 
@@ -144,16 +144,18 @@ class Currency:
 		}
 
 		pay_result = my_wallet.pay_invoice(invoice_params)
-		helpers.log(f"\nwithdrawl by {withdrawer_id}: {amount} sats")
 		
-		return pay_result
 		settled = False
-		if pay_result['lnTx']['settled'] == 1:
-			settled = True
-			self.update_balance(withdrawer_id, -amount)
+		
+		if 'lnTx' in pay_result.keys():
+			if pay_result['lnTx']['settled'] == 1:
+				settled = True
+				helpers.log(f"\nwithdrawl by {withdrawer_id}: {amount} sats")
+				self.update_balance(withdrawer_id, -amount)
+				return "sats withdrawn"
 
 
-		return settled
+		return "payment unsuccessful. try later."
 
 	def get_amount_from_payreq(self, payreq):
 		payreq_decoded = requests.get(f'https://lnpay.co/v1/node/default/payments/decodeinvoice?payment_request={payreq}', auth=HTTPBasicAuth(self.lnpay_api_key, ''))

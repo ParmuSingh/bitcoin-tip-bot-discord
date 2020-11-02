@@ -1,3 +1,4 @@
 **/logs
 **/archives
 **/private_data
+**/__pycache__
