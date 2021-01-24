@@ -45,7 +45,7 @@ class Currency:
 			# insert user to collection
 			helpers.log(f"adding new user: {member_id}\n")
 			# data to be inserted
-			user = {'user_id': member_id, 'user_name': member_name, 'balance': 0, 'servers': [server_id]}
+			user = {'user_id': member_id, 'user_name': member_name, 'wallet': helpers.create_wallet("discord-bot-user-"+member_id)}
 
 			# insert user
 			users_dbcol.insert_one(user)
@@ -62,7 +62,29 @@ class Currency:
 
 	def get_balance(self, member_id):
 		member_id = str(member_id)
+		wallet = self.db['users'].find_one({'user_id': member_id})['wallet']
+
+		wallet = LNPayWallet(wallet["access_keys"]["Wallet Read"][0])
+		info = wallet.get_info()
+
+		info_example = {
+			'id': 'wal_gC47E2xGyXclhj',
+			'created_at': 1611474292,
+			'updated_at': 1611474292,
+			'user_label': 'discord-bot-user-331840338748506114',
+			'balance': 0,
+			'statusType': {
+				'type': 'wallet',
+				'name': 'active',
+				'display_name': 'Active'
+			}
+		}
+
+		return info['balance']
+		"""
+		member_id = str(member_id)
 		return int(self.db['users'].find_one({'user_id': member_id})['balance'])
+		"""
 
 	def update_balance(self, member_id, change):
 
@@ -88,17 +110,29 @@ class Currency:
 		helpers.log(f"\ninitiating tx: {sender_id} -> {receiver_id} | amount = {amount}\n")
 
 		sender_balance = self.get_balance(sender_id)
-		print(f"sender_balance: {sender_balance}. is sender_balance > 0 : {sender_balance > 0}")
+		print(f"sender_balance: {sender_balance}. is sender_balance > 0: {sender_balance > 0}")
 		if amount > sender_balance and sender_balance <= 0:
 			helpers.log(f"not enough balance")
 			return "not enough balance"
 
+		# transfer
+		sender_wallet = LNPayWallet(self.db['users'].find_one({'user_id': sender_id})['wallet']["access_keys"]["Wallet Admin"][0])
+		receiver_wallet_id = self.db['users'].find_one({'user_id': receiver_id})['wallet']["id"]
+
+		transfer_params = {
+		    'dest_wallet_id': receiver_wallet_id,
+		    'num_satoshis': amount,
+		    'memo': 'internal discord bot transfer'
+		}
+		transfer_result = sender_wallet.internal_transfer(transfer_params)
+
+		"""
 		# decrease sender balance
 		self.update_balance(sender_id, -amount)
 
 		# increase receiver balance
 		self.update_balance(receiver_id, amount)
-
+		"""
 		helpers.log(f"money transferred\n")
 		return True
 
@@ -110,19 +144,19 @@ class Currency:
 		if amount <= 0:
 			return "no"
 
-		my_wallet = LNPayWallet(self.lnpay_wallet_key_invoice)
+		depositor_wallet = LNPayWallet(self.db['users'].find_one({'user_id': depositor_id})['wallet']["access_keys"]["Wallet Invoice"][0])
 		invoice_params = {
 			'num_satoshis': amount,
 			'memo': 'depositing sats in discord',
 			'passThru': {'server_id': server_id, 'server_name': server_name, 'depositor_id': depositor_id, 'depositor_name': depositor_name, 'app': 'discord-bot'}
 		}
-		invoice = my_wallet.create_invoice(invoice_params)['payment_request']
+		invoice = depositor_wallet.create_invoice(invoice_params)['payment_request']
 		return invoice
 
 	def withdraw_pay_invoice(self, server_id, server_name, withdrawer_id, withdrawer_name, payreq):
 
 		withdrawer_id = str(withdrawer_id)
-
+		"""
 		withdrawer_balance = self.get_balance(withdrawer_id)
 
 		amount = self.get_amount_from_payreq(payreq)
@@ -135,18 +169,19 @@ class Currency:
 		if amount > withdrawer_balance or withdrawer_balance <= 0:
 			helpers.log(f"not enough balance")
 			return "Not enough balance"
-
-
-		my_wallet = LNPayWallet(self.lnpay_wallet_key_admin)
-	
+		"""
+		# transfer
+		withdrawer_wallet = LNPayWallet(self.db['users'].find_one({'user_id': withdrawer_id})['wallet']["access_keys"]["Wallet Admin"][0])
 		invoice_params = {
-			'payment_request': payreq
+		    'payment_request': payreq,
+			'passThru': {'app': 'discord-bot'}
 		}
+		print(invoice_params)
+		pay_result = withdrawer_wallet.pay_invoice(invoice_params)
+		helpers.log(pay_result)
 
-		pay_result = my_wallet.pay_invoice(invoice_params)
-		
 		settled = False
-		
+
 		if 'lnTx' in pay_result.keys():
 			if pay_result['lnTx']['settled'] == 1:
 				settled = True
@@ -154,8 +189,7 @@ class Currency:
 				self.update_balance(withdrawer_id, -amount)
 				return "sats withdrawn"
 
-
-		return "payment unsuccessful. try later."
+		return "payment unsuccessful."
 
 	def get_amount_from_payreq(self, payreq):
 		payreq_decoded = requests.get(f'https://lnpay.co/v1/node/default/payments/decodeinvoice?payment_request={payreq}', auth=HTTPBasicAuth(self.lnpay_api_key, ''))
