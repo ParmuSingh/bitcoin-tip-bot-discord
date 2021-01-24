@@ -1,3 +1,7 @@
+#######################################################################################################################
+# Webhooks are no longer required. balances are kept in lnpay wallet for the user so no need to maintain in database. #
+######################################################################################################################
+
 from flask import Flask, request
 from pymongo import MongoClient
 import json
@@ -39,7 +43,7 @@ def webhook():
 			helpers.log(f"\ndeposit confirmed by {depositor_id}: {numSatsPaid} sats")
 
 			check(server_id, server_name, depositor_id, depositor_name)
-			
+
 			user = db['users'].find_one({'user_id': depositor_id})
 			user['balance'] += numSatsPaid
 
@@ -62,7 +66,7 @@ def webhook():
 			print(f"\nwithdrawl confirmed by {withdrawer_id}: {numSatsPaid} sats")
 
 			check(server_id, server_name, withdrawer_id, withdrawer_name)
-			
+
 			user = db['users'].find_one({'user_id': withdrawer_id})
 			user['balance'] -= numSatsPaid
 
