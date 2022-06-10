@@ -1,0 +1,5 @@
+**/logs
+**/archives
+**/private_data
+**/__pycache__
+deploy.txt
