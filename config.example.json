@@ -1,0 +1,22 @@
+{
+    "mode": "dev",
+    "dev": {
+        "publicKey": "",
+        "clientId": ,
+        "token": "",
+        "dbConnectionString": "",
+        "dbName": "",
+        "botPermissions": ,
+        "botInviteLink": "",
+        "lnpay-api-key": "",
+        "lnpay-admin-wallet-key": "",
+        "lnpay-invoice-wallet-key": ""
+
+    },
+    "prod": {
+        "clientId": ,
+        "token": "",
+        "dbConnectionString": "",
+        "botPermissions":
+    }
+ }
